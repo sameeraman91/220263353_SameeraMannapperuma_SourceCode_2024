@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Call Center Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div id="infoSection" class="info-section">
+            <h3>PREDICT CALL INFO AND AGENT ALLOCATION</h3>
+            <p>Generate the daily call report to get insights on call volume and agent requirements for each shift.</p>
+        </div>
+
+        <div class="header">
+            <span class="user-info">User 1</span>
+            <a href="/logout" class="logout-button">Logout</a>
+        </div>
+        <form id="reportForm">
+            <label for="selected_date">Select a Date:</label>
+            <input type="date" id="selected_date" name="selected_date" required>
+            <button type="submit">Generate Report</button>
+        </form>
+        <div id="report"></div>
+    </div>
+
+    <script>
+        document.getElementById("reportForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const selectedDate = document.getElementById("selected_date").value;
+
+            if (!selectedDate) {
+                alert("Please select a date.");
+                return;
+            }
+
+            // Hide the info section
+            const infoSection = document.getElementById("infoSection");
+            infoSection.style.display = "none";
+
+            fetch("/generate_report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ selected_date: selectedDate }),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        return response.json().then((error) => {
+                            throw new Error(error.error || "Unknown error");
+                        });
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    const reportContainer = document.getElementById("report");
+
+                    const roundValue = (value) => Math.ceil(value);
+
+                    const sumOfCalls =
+                        roundValue(data.shift_calls.S1_english_calls) +
+                        roundValue(data.shift_calls.S1_sinhala_calls) +
+                        roundValue(data.shift_calls.S1_tamil_calls) +
+                        roundValue(data.shift_calls.S2_english_calls) +
+                        roundValue(data.shift_calls.S2_sinhala_calls) +
+                        roundValue(data.shift_calls.S2_tamil_calls) +
+                        roundValue(data.shift_calls.S3_english_calls) +
+                        roundValue(data.shift_calls.S3_sinhala_calls) +
+                        roundValue(data.shift_calls.S3_tamil_calls);
+
+                    const totalCalls = `
+                        <div class="summary">
+                            <p><strong>Total Calls:</strong> ${sumOfCalls}</p>
+                            <p><strong>Missed Calls:</strong> ${roundValue(data.missed_calls)}</p>
+                        </div>`;
+
+                    const shiftCallsTable = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Shift</th>
+                                    <th>English Calls</th>
+                                    <th>Sinhala Calls</th>
+                                    <th>Tamil Calls</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Shift 1</td>
+                                    <td>${roundValue(data.shift_calls.S1_english_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S1_sinhala_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S1_tamil_calls)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Shift 2</td>
+                                    <td>${roundValue(data.shift_calls.S2_english_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S2_sinhala_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S2_tamil_calls)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Shift 3</td>
+                                    <td>${roundValue(data.shift_calls.S3_english_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S3_sinhala_calls)}</td>
+                                    <td>${roundValue(data.shift_calls.S3_tamil_calls)}</td>
+                                </tr>
+                            </tbody>
+                        </table>`;
+
+                    const agentAllocationsTable = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Shift</th>
+                                    <th>C1 Agents</th>
+                                    <th>C2 Agents</th>
+                                    <th>C3 Agents</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Shift 1</td>
+                                    <td>${roundValue(data.agent_allocations[0][0])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][1])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][2])}</td>
+                                </tr>
+                                <tr>
+                                    <td>Shift 2</td>
+                                    <td>${roundValue(data.agent_allocations[0][3])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][4])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][5])}</td>
+                                </tr>
+                                <tr>
+                                    <td>Shift 3</td>
+                                    <td>${roundValue(data.agent_allocations[0][6])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][7])}</td>
+                                    <td>${roundValue(data.agent_allocations[0][8])}</td>
+                                </tr>
+                            </tbody>
+                        </table>`;
+
+                    reportContainer.innerHTML = `
+                        <h2>Report for ${selectedDate}</h2>
+                        ${totalCalls}
+                        <h3>Shift Call Distribution</h3>
+                        ${shiftCallsTable}
+                        <h3>Agent Allocations</h3>
+                        ${agentAllocationsTable}`;
+                })
+                .catch((error) => {
+                    document.getElementById("report").innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                });
+        });
+    </script>
+</body>
+</html>
